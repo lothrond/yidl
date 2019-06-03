@@ -1,0 +1,296 @@
+#!/bin/bash
+#
+# Copyright 2018 lothrond <lothrond AT posteo DOT us>
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Check needed dependencies.
+# If dependencies are not met,
+# prompt for installation based upon platform.
+DEPENDS=(python ffmpeg wget man)
+_fin(){ echo -e "\n All done, re-running this program.\n" ;}
+_get_depends(){
+    # Android platform installation.
+    _android_get(){
+        if pkg install "${DEPENDS[@]}" ; then
+            if pip install youtube-dl ; then
+                if _fin ; then
+                    return 0
+                fi
+            fi
+        fi
+
+        return 1
+    }
+
+    # GNU/Linux platform installation.
+    # (Supported upstream distribution)
+    # or manual installation reference
+    _gnulinux_get(){
+        # Package manager database.
+        PACMEN=(apt,pacman,yaoart,zypper)
+        _debian(){ sudo apt-get install "${DEPENDS[@]}" || exit 1 ;}
+        _arch(){ sudo pacman -Ss "${DEPENDS[@]}" || exit 1 ;}
+
+        # Set package management system switch case.
+        _list(){ ls /usr/bin | grep "$pacman" ; [ $? -eq 1 ] && _manual_install ;}
+        while _list ; do
+            case "$pacman" in
+                "${PACMEN[0]}") _debian ; break ;;
+                "${PACMEN[1]}") _arch ; break ;;
+                --) shift ; break
+            esac
+        done
+    }
+
+    # Set Resolution method for unknown package management,
+    # (I.E. package manager not in database).
+    _manual_install(){
+        echo "
+        | This program depends on additional software: python3 ffmpeg and wget,\n
+        | you will need to either download and install these packages from your distributions repositories,
+        | or, download/compile/install these packages manually.
+        | For more information about what distributions are \"supported\", run with \`--help\'."
+    }
+
+    if [ "$ANDROID" == "1" ]; then
+        download_depends="_android_get"
+    else
+        download_depends="_gnulinux_get"
+    fi
+
+    local ans
+    echo -n " Missing needed dependancies, should i install them now? [y/N]: "
+    while read ans ; do case "$ans" in
+        'y'|'Y'|'yes'|'Yes'|'YES') $download_depends ; break ;;
+        'n'|'N'|'no'|'No'|'NO') : ; break ;;
+        '') : ; break ;;
+        --) shift ; break ;;
+        *) : ;;
+    esac done
+}
+
+# Set default switch case for supported platforms.
+CPU_ARCH=$(uname -m)
+[ $? -eq 0 ] || exit 1
+case "$CPU_ARCH" in
+    'x86_64'|'i386') ANDROID=0 ;;
+    'aarch64') ANDROID=1 ;;
+esac
+
+depends=$(which "${DEPENDS[@]}" > /dev/null )
+[ $? -eq 0 ] || { _get_depends ;}
+# Program usage information, available at runtime.
+_usage(){
+    echo "$PROGRAM - youtube/invidious downloader"
+    echo
+    echo "USAGE:"
+    echo "   $PROGRAM [OPTIONS] URL"
+    echo
+    echo "OPTIONS:"
+    echo "   -h           show usage information"
+    echo "   -d,--dir     specify download location"
+    echo "   -m,--music   download audio only"
+    echo "   -v,--video   download audio and video"
+    echo "   --free       download \"free\" format (ogg,webm)(Default)"
+    echo "   --nonfree    download \"non-free\" format (mp3,mp4)"
+    echo "   --help       show manual page"
+    echo "   --copyright  show copyright information"
+    echo "   --warranty   show warranty information"
+    echo
+    echo "EXAMPLES:"
+    echo "   $PROGRAM -m https://invidio.us/example-url -d ~/download"
+    echo "   $PROGRAM --nonfree -v https://youtube.com/example-url"
+	echo
+}
+
+_warranty(){
+    echo
+    echo " Unless required by applicable law or agreed to in writing, software"
+    echo " distributed under the License is distributed on an \"AS IS\" BASIS,"
+    echo " WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied."
+    echo " See the License for the specific language governing permissions and"
+    echo " limitations under the License."
+    echo
+}
+
+_copyright(){
+    echo
+    echo " Licensed under the Apache License, Version 2.0 (the \"License\");"
+    echo " you may not use this file except in compliance with the License."
+    echo " You may obtain a copy of the License at"
+    echo "     http://www.apache.org/licenses/LICENSE-2.0"
+    echo
+}
+
+_man(){
+	# OS switch case for $MANDIR
+	if [ $ANDROID -eq 1 ]; then
+		MANDIR=$TERMUX_HOME/usr/share/man/man1
+	else
+		MANDIR=/usr/local/share/man/man1
+	fi
+
+    if [ -n $MANDIR/${PROGRAM}.1 ] || [ -n $MANDIR/$PROGRAM}.1.gz ]; then
+        if man $PROGRAM ; then
+            return 0
+        fi
+    fi
+
+    echo -e " no man page found (is man(1) installed?)" &&
+    return 1
+}
+
+# Prepare for uncommon or null directories
+_no_dirs(){
+    if [ ! -d $DDIR ]; then
+    	local ans0
+
+        echo -e -n " no proper $ddir directory detected, create one now? ${color1}[y/N]\e[0m: "
+        while read ans0; do
+            case "$ans0" in
+                y|Y|yes|YES|Yes) mkdir -pv $DDIR || exit 1 ;;
+                n|N|no|NO|No) exit 1 ;;
+                *) exit 1 ;;
+            esac
+        done
+    fi
+}
+
+# Download operations
+_audio_download(){ youtube-dl -q -x --audio-format $type_format "$USER_URL" -o $OUTPUT/$EXT  ;}
+_video_download(){ youtube-dl -q -f $type_format "$USER_URL" -o $OUTPUT/$EXT ;}
+_download(){
+    [ $USER_DIR_DEF -eq 0 ] || { OUTPUT=$USER_DIR ;}
+
+    # Set default download location for android devices
+    if [ $ANDROID -ne 0 ]; then
+        if [ $MUSIC -ne 0 ]; then 
+            OUTPUT=$ANDROID_HOME/Music
+        else
+            OUTPUT=$ANDROID_HOME/Movies
+        fi
+    # Set default download location for gnu/linux devices
+    else
+        if [ $MUSIC -ne 0 ]; then
+            OUTPUT=$HOME/Music
+        else
+            OUTPUT=$HOME/Videos
+        fi
+    fi
+
+    # Set format specification case
+    [ -z $format ] && format=free
+
+    case "$format" in
+        'free')
+            if [ $MUSIC -ne 0 ]; then
+                type_format=vorbis
+            elif [ $MUSIC -eq 0 ]; then
+                type_format=webm
+            fi
+            ;;
+        'nonfree')
+            if [ $MUSIC -ne 0 ]; then
+                type_format=mp3
+            elif [ $MUSIC -eq 0 ]; then
+                type_format=mp4
+            fi
+            ;;
+        --)
+            shift 2
+            ;;
+    esac
+
+    # Validate download path
+    DDIR=$OUTPUT
+    [ $MUSIC -ne 0 ] && ddir=music || ddir=video
+    _no_dirs
+
+    # Download
+    echo -e -n "\nDownloading..."
+    _end(){ [ $? -eq 0 ] && echo -e "\nSuccess!\n" && return 0 ;}
+    [ $MUSIC -ne 0 ] && { _audio_download ; _end ;}
+    [ $MUSIC -eq 0 ] && { _video_download ; _end ;}
+
+    return 1
+}
+
+# Prompt the user for a download operation
+_prompt(){
+    local ans1 ans2
+
+    echo " $PROGRAM  Copyright 2019 Mike Moss"
+    echo "Unless required by applicable law or agreed to in writing, software"
+    echo "distributed under the License is distributed on an "AS IS" BASIS,"
+    echo "WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied."
+    echo "See the License for the specific language governing permissions and"
+    echo "limitations under the License."
+    echo
+    echo "Run this program with \`-h' or \`--help' for additional usage information."
+
+    echo -e -n "\n Download Music or Video? ${color1}[m/v]\e[0m: "
+
+    _url(){
+        echo -e -n "\n ${color2}URL:\e[0m "
+        read ans2
+    }
+
+    while read ans1 ; do
+        case "$ans1" in
+	    'm'|'M'|'music'|'Music'|'MUSIC') MUSIC=1 ; _url ; USER_URL="$ans2" ; _download ; break ;;
+            'v'|'V'|'video'|'Video'|'VIDEO') MUSIC=0 ; _url ; USER_URL="$ans2" ; _download ; break ;;
+            '') echo -e "$color1 ERROR\e[0m - no user input\n" ; exit 1 ; break ;;
+            *) echo -e "$color1 ERROR\e[0m - invalid user input\n" ; exit 1 ; break ;;
+            --) shift ; break ;;
+        esac
+    done
+}
+
+# Global options
+PROGRAM="$(basename $0)"
+USER_DIR_DEF=0
+TERMUX_HOME=/data/data/com.termux/files
+ANDROID_HOME=/storage/emulated/0
+EXT="%(title)s.%(ext)s"
+color1="\e[31m"
+color2="\e[34m"
+
+# Options
+short='d:hm:v:'
+long='copyright,dir:,help,music:,video:,warranty,free,nonfree,nocolor'
+options=$(getopt -o $short --long $long -n "$PROGRAM" -- "$@")
+[ $? -eq 0 ] || { exit 1 ;}
+
+# Execution
+[ $# -ne 0 ] || { _prompt ;}
+
+eval set -- "$options"
+
+while true; do
+    case "$1" in
+        -d|--dir) USER_DIR_DEF=1 ; USER_DIR="$3" ; [ -z "$4" ] && _prompt ; shift 3 ; break ;;
+        -h) _usage ; break ;;
+        --help) _man ; break ;;
+        -m|--music) [ ! -z "$2" ] && { USER_URL="$2" ; MUSIC=1 ; _download ;} || exit 666 ; break ;;
+        -v|--video) [ ! -z "$2" ] && { USER_URL="$2" ; MUSIC=0 ; _download ;} || exit 666 ; break ;;
+        --free) format=free ; [ -z "$3" ] && _prompt ; shift ; break ;;
+        --nonfree) format=nonfree ; [ -z "$3" ] && _prompt ; shift ; break ;;
+        --nocolor) color1="" ; color2="" ; [ -z "$3" ] && _prompt ; shift ; break ;;
+        --copyright) _copyright ; break ;;
+        --warranty) _warranty ; break ;;
+        --) shift ; break ;;
+        *) echo "ERROR -- invalid command line" ; exit 1 ; break ;;
+    esac
+done
+
+exit $?
