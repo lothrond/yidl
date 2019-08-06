@@ -285,7 +285,7 @@ options=$(getopt -o $short -l $long -n "$PROGRAM" -- "$@")
 [ $? -eq 0 ] || { exit 1 ;}
 
 # Execution
-[ $# -ne 0 ] || { _prompt ;}
+[ $# -ne 0 ] || { clear && _prompt ;}
 
 eval set -- "$options"
 
