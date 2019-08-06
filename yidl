@@ -69,7 +69,7 @@ _get_depends(){
             fedora) _fedora;;
             gentoo) _gentoo;;
             *) _manual_install;;
-        esac done
+        esac
     }
 
     # Install dependency switch case.
