@@ -157,7 +157,7 @@ _man(){
         fi
     fi
 
-    echo -e " no man page found (is man(1) installed?)" &&
+    echo -e " no man page found (is man installed?)"
     return 1
 }
 
