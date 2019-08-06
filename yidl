@@ -99,7 +99,7 @@ case "$CPU_ARCH" in
 esac
 
 # Check for all needed dependencies.
-which "${DEPENDS[@]}" >& /dev/null; ret=$?
+which ${DEPENDS[@]} >& /dev/null; ret=$?
 [ $ret -eq 0 ] || _get_depends
 
 # Program usage information, available at runtime.
@@ -281,7 +281,7 @@ color2="\e[34m"
 # Options
 short='d:hm:v:'
 long='copyright,dir:,help,music:,video:,warranty,free,nonfree,nocolor'
-options=$(getopt -o $short --long $long -n "$PROGRAM" -- "$@")
+options=$(getopt -o $short -l $long -n "$PROGRAM" -- "$@")
 [ $? -eq 0 ] || { exit 1 ;}
 
 # Execution
