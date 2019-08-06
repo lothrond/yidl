@@ -13,12 +13,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+DEPENDS=(python ffmpeg wget man)
+
 # Check needed dependencies.
 # If dependencies are not met,
 # prompt for installation based upon platform.
-DEPENDS=(python ffmpeg wget man)
 _fin(){ echo -e "\n All done, re-running this program.\n" ;}
+
 _get_depends(){
+    # Set Resolution method for unknown package management,
+    # (I.E. package manager not in database).
+    _manual_install(){
+        echo "
+        | This program depends on additional software: python3 ffmpeg and wget,\n
+        | you will need to either download and install these packages from your distributions repositories,
+        | or, download/compile/install these packages manually.
+        | For more information about what distributions are \"supported\", run with \`--help\'."
+    }
+
     # Android platform installation.
     _android_get(){
         if pkg install "${DEPENDS[@]}" ; then
@@ -36,32 +48,31 @@ _get_depends(){
     # (Supported upstream distribution)
     # or manual installation reference
     _gnulinux_get(){
+        # Set resolution message on failure.
+        _failed_get() { echo "Failed to fetch dependecies..."; exit 1 ;}
+
         # Package manager database.
-        PACMEN=(apt,pacman,yaoart,zypper)
-        _debian(){ sudo apt-get install "${DEPENDS[@]}" || exit 1 ;}
-        _arch(){ sudo pacman -Ss "${DEPENDS[@]}" || exit 1 ;}
+        PACMEN=(apt pacman dnf emerge)
+
+        # Package install database.
+        _debian(){ ${PACMAN[0]} install "${DEPENDS[@]}" || _failed_get ;}
+        _arch(){ ${PACMAN[1]} -Ss "${DEPENDS[@]}" || _failed_get ;}
+        _gentoo(){ ${PACMAN[3]} --ask ${DEPENDS[@]} || _failed_get ;}
+        _fedora(){ ${PACMAN[2]} --install ${DEPENDS[@]} || _failed_get ;}
 
         # Set package management system switch case.
-        _list(){ ls /usr/bin | grep "$pacman" ; [ $? -eq 1 ] && _manual_install ;}
-        while _list ; do
-            case "$pacman" in
-                "${PACMEN[0]}") _debian ; break ;;
-                "${PACMEN[1]}") _arch ; break ;;
-                --) shift ; break
-            esac
-        done
+        PAC_MAN=$(uname -r | cut -d '-' -f 2)
+
+        case "$PAC_MAN" in
+            arch) _arch;;
+            debian) _debian;;
+            fedora) _fedora;;
+            gentoo) _gentoo;;
+            *) _manual_install;;
+        esac done
     }
 
-    # Set Resolution method for unknown package management,
-    # (I.E. package manager not in database).
-    _manual_install(){
-        echo "
-        | This program depends on additional software: python3 ffmpeg and wget,\n
-        | you will need to either download and install these packages from your distributions repositories,
-        | or, download/compile/install these packages manually.
-        | For more information about what distributions are \"supported\", run with \`--help\'."
-    }
-
+    # Install dependency switch case.
     if [ "$ANDROID" == "1" ]; then
         download_depends="_android_get"
     else
@@ -167,8 +178,8 @@ _no_dirs(){
 }
 
 # Download operations
-_audio_download(){ youtube-dl -q -x --audio-format $type_format "$USER_URL" -o $OUTPUT/$EXT  ;}
-_video_download(){ youtube-dl -q -f $type_format "$USER_URL" -o $OUTPUT/$EXT ;}
+_audio_download(){ youtube-dl -q -x --audio-format $type_format "$USER_URL" -o ${OUTPUT}/${EXT}  ;}
+_video_download(){ youtube-dl -q -f $type_format "$USER_URL" -o ${OUTPUT}/${EXT} ;}
 _download(){
     [ $USER_DIR_DEF -eq 0 ] || { OUTPUT=$USER_DIR ;}
 
@@ -229,7 +240,7 @@ _download(){
 _prompt(){
     local ans1 ans2
 
-    echo " $PROGRAM  Copyright 2019 Mike Moss"
+    echo " $PROGRAM  Copyright (C) 2019, lothrond  <lothrond AT posteo DOT us>"
     echo "Unless required by applicable law or agreed to in writing, software"
     echo "distributed under the License is distributed on an "AS IS" BASIS,"
     echo "WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied."

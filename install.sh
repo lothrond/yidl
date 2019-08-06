@@ -1,33 +1,33 @@
 #!/bin/bash
+#
+# If you are on android, and use termux.
+# Or, just on GNU/Linux.
+# Then, this script will help you.
+
+set -o errexit
 
 PROG=yidl
+ANDROID=0
+SET_ALIAS=true
 
 # Set OS switch case.
 case "$(uname -m)" in
-	aarch64) ANDROID='1' ;;
+	aarch64) ANDROID='1';;
 	*) ;;
 esac
 
-# Check return values.
-function _check_returns(){
-	if [ $? -eq 0 ]; then
-		exit 0
-	else
-		exit 1
-	fi
-}
-
-# Install all objects on OS.
 if [ "$ANDROID" == "1" ]; then
 	ADIR=/data/data/com.termux/files/usr
-	cp -v $PROG $ADIR/bin &&
-	cp -v ${PROG}.1 $ADIR/share/man/man1
-	_check_returns
+    AHOME=
+	cp -v "$PROG" ${ADIR}/bin
+	cp -v "${PROG}.1" ${ADIR}/share/man/man1
+    if [ "$SET_ALIAS" == "true" ]; then
+        echo 'alias yt="yidl $@"' > $AHOME/.bashrc
+    fi
 else
 	LDIR=/usr/local
-	sudo cp -v $PROG $LDIR/bin &&
-	sudo cp -v ${PROG}.1 $LDIR/man/man1
-	_check_returns	
+	sudo cp -v "$PROG" ${LDIR}/bin &&
+	sudo cp -v "${PROG}.1" ${LDIR}/man/man1
 fi
 
 exit $?
