@@ -18,11 +18,11 @@ esac
 
 if [ "$ANDROID" == "1" ]; then
 	ADIR=/data/data/com.termux/files/usr
-    AHOME=
+    AHOME=/data/data/com.termux/files/home
 	cp -v "$PROG" ${ADIR}/bin
 	cp -v "${PROG}.1" ${ADIR}/share/man/man1
     if [ "$SET_ALIAS" == "true" ]; then
-        echo 'alias yt="yidl $@"' > $AHOME/.bashrc
+        echo 'alias yt="yidl"' > ${AHOME}/.bashrc
     fi
 else
 	LDIR=/usr/local
