@@ -20,11 +20,11 @@ if [ "$ANDROID" == "1" ]; then
 	ADIR=/data/data/com.termux/files/usr
     AHOME=/data/data/com.termux/files/home
 
-	cp -v "$PROG" ${ADIR}/bin
-	cp -v "${PROG}.1" ${ADIR}/share/man/man1
+	rm -fv ${ADIR}/bin/${PROG}
+	rm -fv ${ADIR}/share/man/man1/${PROG}.1
 
     if [ "$SET_ALIAS" == "true" ]; then
-        echo 'alias yt="yidl"' > ${AHOME}/.bashrc
+        sed -i 's/alias yt="yidl"//g' ${AHOME}/.bashrc
     fi
 else
     if [ $UID -ne 0 ]; then
@@ -34,8 +34,8 @@ else
 
 	LDIR=/usr/local
 
-	cp -v "$PROG" ${LDIR}/bin
-	cp -v "${PROG}.1" ${LDIR}/man/man1
+	rm -fv ${LDIR}/bin/${PROG}
+	rm -fv ${LDIR}/man/man1/${PROG}.1
 fi
 
 exit $?
