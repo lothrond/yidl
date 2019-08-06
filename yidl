@@ -98,8 +98,10 @@ case "$CPU_ARCH" in
     'aarch64') ANDROID=1 ;;
 esac
 
-depends=$(which "${DEPENDS[@]}" > /dev/null )
-[ $? -eq 0 ] || { _get_depends ;}
+# Check for all needed dependencies.
+which "${DEPENDS[@]}" >& /dev/null; ret=$?
+[ $ret -eq 0 ] || _get_depends
+
 # Program usage information, available at runtime.
 _usage(){
     echo "$PROGRAM - youtube/invidious downloader"
