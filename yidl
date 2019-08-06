@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-DEPENDS=(python ffmpeg wget man util-linux)
+DEPENDS=(python ffmpeg wget man)
 
 # Check needed dependencies.
 # If dependencies are not met,
